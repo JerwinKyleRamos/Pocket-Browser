@@ -1,20 +1,19 @@
 
 "Database functions: add link, delete link, load link, save link"
 
-
 import json
-from os import link
 from pathlib import Path
 from datetime import datetime
 
-DB_Path = Path.home() / ".pocket_browser" / "db.json"
+DB_Path = Path.home() / ".pocket_browser"
+DB_File = DB_Path / "db.json"
 DB_Path.mkdir(parents=True, exist_ok=True)
 
 class Database:
 
     def __init__(self):
         """ Initialize the database and load existing data"""
-        self.db_path = DB_Path
+        self.db_path = DB_File
         self.data = self.load()
 
     "LOAD LINKS"
@@ -22,7 +21,7 @@ class Database:
         if self.db_path.exists():
             with open(self.db_path, 'r') as f:
                 return json.load(f)
-            return{"links": []}
+        return{"links": []}
 
     "SAVE LINKS"
     def save(self):
@@ -32,8 +31,10 @@ class Database:
     "ADD LINKS"
     def add_link(self, title, link):
 
+        existing_ids = [l["id"] for l in self.data["links"]]
+        new_id = max(existing_ids, default=0) + 1
         link = {
-            "id": len(self.data["links"]) ,
+            "id": new_id,
             "title": title,
             "url": link,
             "date": datetime.now().isoformat()
@@ -44,9 +45,10 @@ class Database:
         return link
 
     "DELETE LINKS"
-    def delete_link(self, link):
-
-        self.data["links"].remove(link)
+    def delete_link(self, link_id):
+        self.data["links"] = [
+            l for l in self.data["links"] if l["id"] != link_id
+        ]
         self.save()
 
     "LOAD ALL LINKS"
@@ -55,9 +57,9 @@ class Database:
 
     def get_link_by_id(self, link_id):
 
-        if link in self.data["links"]:
-            if link["id"] == link_id:
-                return link
+        for l in self.data["links"]:
+            if l["id"] == link_id:
+                return l
         return None
 
     "UPDATE LINKS"

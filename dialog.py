@@ -26,9 +26,9 @@ class AddLinkDialog(QDialog):
 
 
         "buttons"
-        buttons_layout = QDialogButtonBox()
+        buttons_layout = QHBoxLayout()
         save_btn = QPushButton("Add Link")
-        cancel_btn = QPushButton("Delete Link")
+        cancel_btn = QPushButton("Cancel")
 
         save_btn.clicked.connect(self.save_link)
         cancel_btn.clicked.connect(self.close)
@@ -40,11 +40,11 @@ class AddLinkDialog(QDialog):
         self.setLayout(layout)
 
         # Focus on title input when dialog opens
-        self.title_input.setFocus()
+        self.title_label.setFocus()
 
     def save_link(self):
 
-        title = self.title_input.text().strip()
+        title = self.title_label.text().strip()
         url = self.url_label.text().strip()
 
         if not title or not url:
@@ -54,9 +54,8 @@ class AddLinkDialog(QDialog):
         if not url.startswith("http"):
             url = "https://" + url
 
-        self.result("title", title, "url", url)
-        self.close()
+        self.result = {"title": title, "url": url}
+        self.accept()
 
     def get_result(self):
         return self.result
-
