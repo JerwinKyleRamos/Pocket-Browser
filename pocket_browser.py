@@ -47,13 +47,16 @@ class PocketBrowser (QMainWindow):
         remove_button.clicked.connect(self.delete_link)
         left_layout.addWidget(remove_button)
 
-        left_widget = QWidget()
-        left_widget.setLayout(left_layout)
-        left_widget.setMaximumWidth(250)
-
+        self.left_widget = QWidget()
+        self.left_widget.setLayout(left_layout)
+        self.left_widget.setMaximumWidth(250)
+        self.left_widget.setMinimumWidth(0)
 
         """RIGHT PANEL"""
         right_layout = QVBoxLayout()
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(0)
+
         self.name_display = QLabel()
         self.url_display = QLabel()
         self.browser = QWebEngineView()
@@ -62,15 +65,61 @@ class PocketBrowser (QMainWindow):
         right_widget = QWidget()
         right_widget.setLayout(right_layout)
 
-        """SPLITTER"""
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(left_widget)
-        splitter.addWidget(right_widget)
-        splitter.setStretchFactor(0, 1)      # Left: 1x
-        splitter.setStretchFactor(1, 2)      # Right: 2x (bigger)
+        """TOGGLE BUTTON"""
+        self.toggle_btn = QPushButton("◀")
+        self.toggle_btn.setFixedWidth(18)
+        self.toggle_btn.setFixedHeight(60)
+        self.toggle_btn.setToolTip("Collapse/Expand panel")
+        self.toggle_btn.clicked.connect(self.toggle_left_panel)
+        self.toggle_btn.setStyleSheet("""
+                 QPushButton {
+                     background-color: #cccccc;
+                     border: none;
+                     border-radius: 4px;
+                     font-size: 10px;
+                     padding: 0px;
+                 }
+                 QPushButton:hover {
+                     background-color: #aaaaaa;
+                 }
+             """)
 
-        main_layout.addWidget(splitter)
+        """RIGHT PANEL WRAPPER: toggle button + browser"""
+        right_wrapper_layout = QHBoxLayout()
+        right_wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        right_wrapper_layout.setSpacing(2)
+        right_wrapper_layout.addWidget(self.toggle_btn, alignment=Qt.AlignmentFlag.AlignVCenter)
+        right_wrapper_layout.addWidget(right_widget)
+
+        right_wrapper = QWidget()
+        right_wrapper.setLayout(right_wrapper_layout)
+
+        """SPLITTER"""
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.splitter.addWidget(self.left_widget)
+        self.splitter.addWidget(right_wrapper)
+        self.splitter.setStretchFactor(0, 1)      # Left: 1x
+        self.splitter.setStretchFactor(1, 2)      # Right: 2x (bigger)
+
+        main_layout.addWidget(self.splitter)
         central_widget.setLayout(main_layout)
+
+
+    def toggle_left_panel(self):
+        sizes = self.splitter.sizes()
+        left_size = sizes[0]
+
+        if left_size > 0:
+            # Collapse: save current width, set to 0
+            self.left_panel_width = left_size
+            total = sum(sizes)
+            self.splitter.setSizes([0, total])
+            self.toggle_btn.setText("▶")
+        else:
+            # Expand: restore saved width
+            total = sum(sizes)
+            self.splitter.setSizes([self.left_panel_width, total - self.left_panel_width])
+            self.toggle_btn.setText("◀")
 
     def load_links(self):
 
