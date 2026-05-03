@@ -15,13 +15,30 @@ class Database:
         """ Initialize the database and load existing data"""
         self.db_path = DB_File
         self.data = self.load()
+        self._migrate()
+
+    """MIGRATE LINKS"""
+    def _migrate(self):
+        changed = False
+        for link in self.data["links"]:
+            if "collection" not in link:
+                link["collection"] = "Uncategorized"
+                changed = True
+            if "order" not in link:
+                link["order"] = link["id"]
+                changed = True
+        if "collections" not in self.data:
+            self.data["collections"] = ["Uncategorized"]
+            changed = True
+        if changed:
+            self.save()
 
     "LOAD LINKS"
     def load(self):
         if self.db_path.exists():
             with open(self.db_path, 'r') as f:
                 return json.load(f)
-        return{"links": []}
+        return{"links": [], "collections": ["Uncategorized"]}
 
     "SAVE LINKS"
     def save(self):
@@ -29,7 +46,7 @@ class Database:
             json.dump(self.data, f, indent=4)
 
     "ADD LINKS"
-    def add_link(self, title, link):
+    def add_link(self, title, link, collection="Uncategorized"):
 
         existing_ids = [l["id"] for l in self.data["links"]]
         new_id = max(existing_ids, default=0) + 1
@@ -37,7 +54,9 @@ class Database:
             "id": new_id,
             "title": title,
             "url": link,
-            "date": datetime.now().isoformat()
+            "date": datetime.now().isoformat(),
+            "collection": collection,
+            "order": new_id,
         }
 
         self.data["links"].append(link)
@@ -55,6 +74,7 @@ class Database:
     def get_all_links(self):
         return self.data["links"]
 
+    "GET LINK BY ID"
     def get_link_by_id(self, link_id):
 
         for l in self.data["links"]:
@@ -75,5 +95,32 @@ class Database:
             self.save()
             return link
         return None
+
+    def move_link(self, link_id, collection, order):
+        link = self.get_link_by_id(link_id)
+
+        if link:
+            link["collection"] = collection
+            link["order"] = order
+            self.save()
+
+    def add_collection(self, collection):
+        if collection not in self.data["collections"]:
+            self.data["collections"].append(collection)
+            self.save()
+
+    def delete_collection(self, collection):
+        if collection == "Uncategorized":
+            return
+        self.data["collections"] = [c for c in self.data["collections"] if c != collection]
+        for link in self.data["links"]:
+            if link["collection"] == collection:
+                link["collection"] = "Uncategorized"
+        self.save()
+
+    def get_collections(self):
+        return self.data["collections"]
+
+
 
 

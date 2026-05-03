@@ -32,9 +32,9 @@ class PocketBrowser (QMainWindow):
         main_layout = QVBoxLayout()
 
         """LEFT PANEL"""
-        self.left_panel = LeftPanel()
+        self.left_panel = LeftPanel(self.db)
         self.left_panel.add_button.clicked.connect(self.add_link)
-        self.left_panel.links_list.itemClicked.connect(self.on_link_selected)
+        self.left_panel.link_selected.connect(self.on_link_selected)
         self.left_panel.remove_button.clicked.connect(self.delete_link)
 
         """RIGHT PANEL"""
@@ -79,15 +79,9 @@ class PocketBrowser (QMainWindow):
         links = self.db.get_all_links()
         self.left_panel.load_links(links)
 
-    def on_link_selected(self, item):
-
-        link = item.data(Qt.ItemDataRole.UserRole)
-
-        if link:
-            self.current_link = link
-            self.name_display.setText(link["title"])
-            self.url_display.setText(link["url"])
-            self.browser.load(QUrl(link["url"]))
+    def on_link_selected(self, link):
+        self.current_link = link
+        self.browser.load(QUrl(link["url"]))
 
     def add_link(self):
 
@@ -102,35 +96,23 @@ class PocketBrowser (QMainWindow):
 
     def delete_link(self):
 
-        if not self.current_link:
+        current = self.left_panel.current_link
+
+        if not current:
             QMessageBox.warning(self, "Warning", "Please select a link!")
             return
 
         reply = QMessageBox.question(
             self,
             "Warning",
-            f"Do you really want to remove '{self.current_link['title']}'?",
+            f"Do you really want to remove '{current['title']}'?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            # Delete from database
-            self.db.delete_link(self.current_link['id'])
-
-            # Remove from UI list
-            for i in range(self.links_list.count()):
-                item = self.links_list.item(i)
-                link = item.data(Qt.ItemDataRole.UserRole)
-                if link['id'] == self.current_link['id']:
-                    self.links_list.takeItem(i)
-                    break
-
-            # Clear display
+            self.db.delete_link(current['id'])
             self.current_link = None
-            self.name_display.setText("")
-            self.url_display.setText("")
-
-            # Success feedback
+            self.left_panel.load_links(self.db.get_all_links())
             QMessageBox.information(self, "Deleted", "Link deleted!")
 
 
