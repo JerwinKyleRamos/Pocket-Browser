@@ -5,6 +5,8 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 
 from database import Database
 from dialog import AddLinkDialog
+from ui_features.left_panel_toggle import ToggleButton
+from ui_features.left_panel import LeftPanel
 
 class PocketBrowser (QMainWindow):
 
@@ -30,27 +32,10 @@ class PocketBrowser (QMainWindow):
         main_layout = QVBoxLayout()
 
         """LEFT PANEL"""
-        left_layout = QVBoxLayout()
-
-        #add Button
-        add_button = QPushButton("Add Link")
-        add_button.clicked.connect(self.add_link)
-        left_layout.addWidget(add_button)
-
-        #link list
-        self.links_list = QListWidget()
-        self.links_list.itemClicked.connect(self.on_link_selected)
-        left_layout.addWidget(self.links_list)
-
-        #remove button
-        remove_button = QPushButton("Remove Link")
-        remove_button.clicked.connect(self.delete_link)
-        left_layout.addWidget(remove_button)
-
-        self.left_widget = QWidget()
-        self.left_widget.setLayout(left_layout)
-        self.left_widget.setMaximumWidth(250)
-        self.left_widget.setMinimumWidth(0)
+        self.left_panel = LeftPanel()
+        self.left_panel.add_button.clicked.connect(self.add_link)
+        self.left_panel.links_list.itemClicked.connect(self.on_link_selected)
+        self.left_panel.remove_button.clicked.connect(self.delete_link)
 
         """RIGHT PANEL"""
         right_layout = QVBoxLayout()
@@ -65,70 +50,34 @@ class PocketBrowser (QMainWindow):
         right_widget = QWidget()
         right_widget.setLayout(right_layout)
 
+        """SPLITTER"""
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.splitter.addWidget(self.left_panel)
+        self.splitter.setStretchFactor(0, 1)  # Left: 1x
+        self.splitter.setStretchFactor(1, 2)  # Right: 2x (bigger)
+
         """TOGGLE BUTTON"""
-        self.toggle_btn = QPushButton("◀")
-        self.toggle_btn.setFixedWidth(18)
-        self.toggle_btn.setFixedHeight(60)
-        self.toggle_btn.setToolTip("Collapse/Expand panel")
-        self.toggle_btn.clicked.connect(self.toggle_left_panel)
-        self.toggle_btn.setStyleSheet("""
-                 QPushButton {
-                     background-color: #cccccc;
-                     border: none;
-                     border-radius: 4px;
-                     font-size: 10px;
-                     padding: 0px;
-                 }
-                 QPushButton:hover {
-                     background-color: #aaaaaa;
-                 }
-             """)
+        self.toggle_btn = ToggleButton(self.splitter)
 
         """RIGHT PANEL WRAPPER: toggle button + browser"""
         right_wrapper_layout = QHBoxLayout()
         right_wrapper_layout.setContentsMargins(0, 0, 0, 0)
-        right_wrapper_layout.setSpacing(2)
+        right_wrapper_layout.setSpacing(5)
         right_wrapper_layout.addWidget(self.toggle_btn, alignment=Qt.AlignmentFlag.AlignVCenter)
         right_wrapper_layout.addWidget(right_widget)
 
         right_wrapper = QWidget()
         right_wrapper.setLayout(right_wrapper_layout)
 
-        """SPLITTER"""
-        self.splitter = QSplitter(Qt.Orientation.Horizontal)
-        self.splitter.addWidget(self.left_widget)
         self.splitter.addWidget(right_wrapper)
-        self.splitter.setStretchFactor(0, 1)      # Left: 1x
-        self.splitter.setStretchFactor(1, 2)      # Right: 2x (bigger)
 
         main_layout.addWidget(self.splitter)
         central_widget.setLayout(main_layout)
 
-
-    def toggle_left_panel(self):
-        sizes = self.splitter.sizes()
-        left_size = sizes[0]
-
-        if left_size > 0:
-            # Collapse: save current width, set to 0
-            self.left_panel_width = left_size
-            total = sum(sizes)
-            self.splitter.setSizes([0, total])
-            self.toggle_btn.setText("▶")
-        else:
-            # Expand: restore saved width
-            total = sum(sizes)
-            self.splitter.setSizes([self.left_panel_width, total - self.left_panel_width])
-            self.toggle_btn.setText("◀")
-
     def load_links(self):
 
         links = self.db.get_all_links()
-
-        for link in links:
-            item = QListWidgetItem(link["title"])
-            item.setData(Qt.ItemDataRole.UserRole, link)
-            self.links_list.addItem(item)
+        self.left_panel.load_links(links)
 
     def on_link_selected(self, item):
 
@@ -147,12 +96,8 @@ class PocketBrowser (QMainWindow):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             result = dialog.get_result()
             if result:
-                link = self.db.add_link(result["title"], result["url"])
-
-                item = QListWidgetItem(link["title"])
-                item.setData(Qt.ItemDataRole.UserRole, link)
-                self.links_list.addItem(item)
-
+                self.db.add_link(result["title"], result["url"])
+                self.left_panel.load_links(self.db.get_all_links())
                 QMessageBox.information(self, "Success", "Link Added!")
 
     def delete_link(self):
